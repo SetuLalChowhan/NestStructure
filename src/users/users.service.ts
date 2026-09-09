@@ -1,26 +1,34 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { CreateUserDto } from './dto/create-user.dto.js';
-import { UpdateUserDto } from './dto/update-user.dto.js';
+import { UpdateProfileDto } from './dto/update-profile.dto.js';
+import { AdminUpdateUserDto } from './dto/admin-update-user.dto.js';
+import { deleteFileFromDisk } from '../common/utils/file-upload.util.js';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(private readonly prisma: PrismaService) {}
 
   async findAll() {
-    return this.prisma.user.findMany();
-  }
-
-  async create(dto: CreateUserDto) {
-    return this.prisma.user.create({
-      data: {
-        firstName: dto.firstName,
-        lastName: dto.lastName,
-        email: dto.email,
-        dateOfBirth: dto.dateOfBirth
-          ? new Date(dto.dateOfBirth)
-          : undefined,
-        phone: dto.phone,
+    return this.prisma.user.findMany({
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        name: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        emailVerified: true,
+        image: true,
+        dateOfBirth: true,
+        phone: true,
+        role: true,
+        createdAt: true,
+        updatedAt: true,
       },
     });
   }
@@ -28,30 +36,205 @@ export class UsersService {
   async findOne(id: string) {
     const user = await this.prisma.user.findUnique({
       where: { id },
+      select: {
+        id: true,
+        name: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        emailVerified: true,
+        image: true,
+        dateOfBirth: true,
+        phone: true,
+        role: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     });
 
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException(`User with ID "${id}" not found`);
     }
 
     return user;
   }
 
-  async update(id: string, dto: UpdateUserDto) {
+  async create(dto: CreateUserDto) {
+    const existing = await this.prisma.user.findUnique({
+      where: { email: dto.email },
+    });
+
+    if (existing) {
+      throw new ConflictException('A user with this email already exists');
+    }
+
+    const fullName =
+      dto.name ||
+      [dto.firstName, dto.lastName].filter(Boolean).join(' ') ||
+      null;
+
+    return this.prisma.user.create({
+      data: {
+        name: fullName,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        email: dto.email,
+        dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : undefined,
+        phone: dto.phone,
+        role: dto.role ?? 'USER',
+      },
+      select: {
+        id: true,
+        name: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        emailVerified: true,
+        image: true,
+        dateOfBirth: true,
+        phone: true,
+        role: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+  }
+
+  /**
+   * User self-profile update with optional image upload
+   */
+  async updateProfile(
+    userId: string,
+    dto: UpdateProfileDto,
+    file?: Express.Multer.File,
+  ) {
+    const user = await this.findOne(userId);
+
+    let imageUrl = user.image;
+    if (file) {
+      imageUrl = `/uploads/avatars/${file.filename}`;
+      // Clean up previous image file if existed
+      if (user.image) {
+        await deleteFileFromDisk(user.image);
+      }
+    }
+
+    const updatedFirstName =
+      dto.firstName !== undefined ? dto.firstName : user.firstName;
+    const updatedLastName =
+      dto.lastName !== undefined ? dto.lastName : user.lastName;
+    const computedName =
+      dto.name ||
+      [updatedFirstName, updatedLastName].filter(Boolean).join(' ') ||
+      user.name;
+
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        name: computedName,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        phone: dto.phone,
+        dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : undefined,
+        image: imageUrl,
+      },
+      select: {
+        id: true,
+        name: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        emailVerified: true,
+        image: true,
+        dateOfBirth: true,
+        phone: true,
+        role: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+  }
+
+  /**
+   * Admin-level update allowing modification of all fields including role and verification status
+   */
+  async adminUpdateUser(
+    id: string,
+    dto: AdminUpdateUserDto,
+    file?: Express.Multer.File,
+  ) {
+    const user = await this.findOne(id);
+
+    if (dto.email && dto.email !== user.email) {
+      const emailExists = await this.prisma.user.findUnique({
+        where: { email: dto.email },
+      });
+      if (emailExists) {
+        throw new ConflictException('A user with this email already exists');
+      }
+    }
+
+    let imageUrl = dto.image !== undefined ? dto.image : user.image;
+    if (file) {
+      imageUrl = `/uploads/avatars/${file.filename}`;
+      if (user.image) {
+        await deleteFileFromDisk(user.image);
+      }
+    }
+
+    const updatedFirstName =
+      dto.firstName !== undefined ? dto.firstName : user.firstName;
+    const updatedLastName =
+      dto.lastName !== undefined ? dto.lastName : user.lastName;
+    const computedName =
+      dto.name ||
+      [updatedFirstName, updatedLastName].filter(Boolean).join(' ') ||
+      user.name;
+
     return this.prisma.user.update({
       where: { id },
       data: {
-        ...dto,
-        dateOfBirth: dto.dateOfBirth
-          ? new Date(dto.dateOfBirth)
-          : undefined,
+        name: computedName,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        email: dto.email,
+        emailVerified: dto.emailVerified,
+        phone: dto.phone,
+        dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : undefined,
+        role: dto.role,
+        image: imageUrl,
+      },
+      select: {
+        id: true,
+        name: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        emailVerified: true,
+        image: true,
+        dateOfBirth: true,
+        phone: true,
+        role: true,
+        createdAt: true,
+        updatedAt: true,
       },
     });
   }
 
   async remove(id: string) {
+    const user = await this.findOne(id);
+
+    if (user.image) {
+      await deleteFileFromDisk(user.image);
+    }
+
     return this.prisma.user.delete({
       where: { id },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+      },
     });
   }
 }
