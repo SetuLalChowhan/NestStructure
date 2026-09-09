@@ -1,4 +1,8 @@
-import { createParamDecorator, ExecutionContext } from '@nestjs/common';
+import {
+  createParamDecorator,
+  ExecutionContext,
+  UnauthorizedException,
+} from '@nestjs/common';
 
 export interface CurrentUserPayload {
   id: string;
@@ -18,10 +22,10 @@ export const CurrentUser = createParamDecorator(
 
     // Support better-auth session attachment, req.user, or req.session.user
     const user: CurrentUserPayload | undefined =
-      request.user || request.session?.user || request.session;
+      request.user || request.session?.user;
 
-    if (!user) {
-      return null;
+    if (!user || !user.id) {
+      throw new UnauthorizedException('Authentication required to access this resource');
     }
 
     return data ? user[data] : user;

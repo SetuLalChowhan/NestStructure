@@ -72,9 +72,11 @@ export class UsersController {
   }
 
   /**
-   * Get a specific user by ID
+   * Get a specific user by ID (Admin only)
    */
   @Get(':id')
+  @Roles('ADMIN')
+  @UseGuards(RolesGuard)
   @ResponseMessage('User fetched successfully')
   findOne(@Param('id') id: string) {
     return this.usersService.findOne(id);
