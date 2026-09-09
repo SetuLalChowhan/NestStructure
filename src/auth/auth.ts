@@ -15,24 +15,33 @@ const prisma = new PrismaClient({
 });
 
 export const auth = betterAuth({
-    trustedOrigins: ['http://localhost:3000'],
+  trustedOrigins: ['http://localhost:3000'],
 
-    database: prismaAdapter(prisma, {
-        provider: 'postgresql',
-    }),
+  database: prismaAdapter(prisma, {
+    provider: 'postgresql',
+  }),
 
-    emailAndPassword: {
-        enabled: true,
+  user: {
+    additionalFields: {
+      role: {
+        type: 'string',
+        defaultValue: 'USER',
+      },
     },
+  },
 
-    emailVerification: {
-        sendOnSignUp: true,
+  emailAndPassword: {
+    enabled: true,
+  },
 
-        sendVerificationEmail: async ({ user, url }) => {
-            await sendEmail(
-                user.email,
-                'Verify your email address',
-                `
+  emailVerification: {
+    sendOnSignUp: true,
+
+    sendVerificationEmail: async ({ user, url }) => {
+      await sendEmail(
+        user.email,
+        'Verify your email address',
+        `
           <h2>Welcome, ${user.name}!</h2>
 
           <p>Please verify your email address:</p>
@@ -43,7 +52,7 @@ export const auth = betterAuth({
 
           <p>If you did not create this account, you can ignore this email.</p>
         `,
-            );
-        },
+      );
     },
+  },
 });
