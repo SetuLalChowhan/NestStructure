@@ -24,15 +24,15 @@ import { avatarUploadOptions } from '../common/utils/file-upload.util.js';
 
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(private readonly usersService: UsersService) { }
 
   /**
    * Get current authenticated user session
    */
   @Get('me')
-  @ResponseMessage('Current user session fetched successfully')
-  getMe(@Session() session: any) {
-    return session;
+  @ResponseMessage('Current user profile fetched successfully')
+  getMe(@CurrentUser('id') userId: string) {
+    return this.usersService.findOne(userId);
   }
 
   /**
