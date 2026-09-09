@@ -2,10 +2,16 @@ import { Body, Controller, Get, Param, Post, Patch, Delete } from '@nestjs/commo
 import { UsersService } from './users.service.js';
 import { CreateUserDto } from './dto/create-user.dto.js'
 import { UpdateUserDto } from './dto/update-user.dto.js';
-
+import { Session } from '@thallesp/nestjs-better-auth';
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) { }
+
+
+  @Get('me')
+  getMe(@Session() session: any) {
+    return session;
+  }
 
   @Get()
   findAll() {
@@ -28,8 +34,12 @@ export class UsersController {
     return this.usersService.update(id, dto);
   }
 
+
+
   @Delete(':id')
-remove(@Param('id') id: string) {
-  return this.usersService.remove(id);
-}
+  remove(@Param('id') id: string) {
+    return this.usersService.remove(id);
+  }
+
+
 }
