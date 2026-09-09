@@ -3,34 +3,56 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { CreateUserDto } from './dto/create-user.dto.js';
 import { UpdateProfileDto } from './dto/update-profile.dto.js';
 import { AdminUpdateUserDto } from './dto/admin-update-user.dto.js';
 import { deleteFileFromDisk } from '../common/utils/file-upload.util.js';
+import {
+  PaginationDto,
+} from '../common/pagination/pagination.dto.js';
+import {
+  createPaginationMeta,
+  getPaginationParams,
+} from '../common/pagination/pagination.utils.js';
 
 @Injectable()
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll() {
-    return this.prisma.user.findMany({
-      orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        name: true,
-        firstName: true,
-        lastName: true,
-        email: true,
-        emailVerified: true,
-        image: true,
-        dateOfBirth: true,
-        phone: true,
-        role: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    });
+  async findAll(query: PaginationDto = {}) {
+    const { skip, take } = getPaginationParams(query.page, query.limit);
+
+    const [users, total] = await Promise.all([
+      this.prisma.user.findMany({
+        skip,
+        take,
+        orderBy: {
+          createdAt: 'desc',
+        },
+        select: {
+          id: true,
+          name: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          emailVerified: true,
+          image: true,
+          dateOfBirth: true,
+          phone: true,
+          role: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      }),
+      this.prisma.user.count(),
+    ]);
+
+    return {
+      data: users,
+      meta: createPaginationMeta(query.page || 1, query.limit || 10, total),
+    };
   }
 
   async findOne(id: string) {

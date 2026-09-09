@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -15,6 +16,7 @@ import { UsersService } from './users.service.js';
 import { CreateUserDto } from './dto/create-user.dto.js';
 import { UpdateProfileDto } from './dto/update-profile.dto.js';
 import { AdminUpdateUserDto } from './dto/admin-update-user.dto.js';
+import { PaginationDto } from '../common/pagination/pagination.dto.js';
 import { Roles } from '../auth/decorators/roles.decorator.js';
 import { RolesGuard } from '../auth/guards/roles.guard.js';
 import { ResponseMessage } from '../common/decorator/response-message.decorator.js';
@@ -49,14 +51,14 @@ export class UsersController {
   }
 
   /**
-   * List all users (Admin only)
+   * List all users with pagination, search, and sorting (Admin only)
    */
   @Get()
   @Roles('ADMIN')
   @UseGuards(RolesGuard)
   @ResponseMessage('All users fetched successfully')
-  findAll() {
-    return this.usersService.findAll();
+  findAll(@Query() query: PaginationDto) {
+    return this.usersService.findAll(query);
   }
 
   /**
