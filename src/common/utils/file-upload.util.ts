@@ -35,15 +35,23 @@ export const avatarUploadOptions = {
   ) => {
     const allowedMimeTypes = [
       'image/jpeg',
+      'image/jpg',
+      'image/pjpeg',
       'image/png',
       'image/webp',
       'image/gif',
     ];
 
-    if (!allowedMimeTypes.includes(file.mimetype)) {
+    const ext = extname(file.originalname).toLowerCase();
+    const allowedExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
+
+    if (
+      !allowedMimeTypes.includes(file.mimetype.toLowerCase()) &&
+      !allowedExtensions.includes(ext)
+    ) {
       return cb(
         new BadRequestException(
-          'Invalid file type. Only JPEG, PNG, WEBP, and GIF images are allowed.',
+          'Invalid file type. Only JPG, JPEG, PNG, WEBP, and GIF images are allowed.',
         ),
         false,
       );

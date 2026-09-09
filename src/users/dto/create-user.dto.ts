@@ -32,7 +32,7 @@ export class CreateUserDto {
   dateOfBirth?: string;
 
   @IsOptional()
-  @IsPhoneNumber(undefined, { message: 'Please provide a valid phone number' })
+  @IsPhoneNumber('BD', { message: 'Please provide a valid phone number' })
   phone?: string;
 
   @IsOptional()
