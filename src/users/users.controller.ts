@@ -15,7 +15,6 @@ import { UsersService } from './users.service.js';
 import { CreateUserDto } from './dto/create-user.dto.js';
 import { UpdateProfileDto } from './dto/update-profile.dto.js';
 import { AdminUpdateUserDto } from './dto/admin-update-user.dto.js';
-import { Session } from '@thallesp/nestjs-better-auth';
 import { Roles } from '../auth/decorators/roles.decorator.js';
 import { RolesGuard } from '../auth/guards/roles.guard.js';
 import { ResponseMessage } from '../common/decorator/response-message.decorator.js';
